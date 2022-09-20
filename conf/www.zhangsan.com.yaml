@@ -1,0 +1,4 @@
+type: file_server
+server_name: www.zhangsan.com
+index: index.html
+root: ./html/www.zhangsan.com

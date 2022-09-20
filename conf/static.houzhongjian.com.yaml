@@ -1,0 +1,4 @@
+type: file_server
+server_name: static.houzhongjian.com
+index: index.html
+root: ./html/www.houzhongjian.com

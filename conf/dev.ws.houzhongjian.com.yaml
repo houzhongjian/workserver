@@ -1,0 +1,3 @@
+type: reverse_proxy
+proxy_pass: http://www.jianchengjiaoyu.com
+server_name: dev.ws.houzhongjian.com

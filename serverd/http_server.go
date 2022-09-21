@@ -41,7 +41,6 @@ func (params ServerParams) Run(server *Serverd, w http.ResponseWriter, r *http.R
 	switch params.Type {
 	case config.ConfigType_FileServer:
 		fs, _ := getServerNameByFileServer(params.ServerName, server.FileServer)
-		log.Printf("fs:%+v\n", fs)
 		ServeFile(fs, w, r)
 	case config.ConfigType_ReverseProxy:
 		reverse, _ := getServerNameByReverseProxy(params.ServerName, server.ReverseProxy)
@@ -64,8 +63,6 @@ func NewServerd(opt ServerdOptions) *Serverd {
 
 
 func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("fileserver:%+v\n", server.FileServer)
-	log.Printf("reverseProxy:%+v\n", server.ReverseProxy)
 	log.Println(r.Host, r.Method, r.RequestURI)
 
 	serverParams, ok := server.MP[r.Host]
@@ -73,8 +70,6 @@ func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	log.Println("111111111111111111")
-	log.Println(r.Host, r.Method, r.RequestURI, serverParams.ServerName, serverParams.Type)
 	serverParams.Run(server, w, r)
 }
 
@@ -98,7 +93,6 @@ func (server *Serverd) GetAllServerName() []string {
 		serverName = append(serverName, reverseProxy.ServerName)
 	}
 
-	log.Printf("server_name:%+v\n",serverName)
 	return serverName
 }
 func (server *Serverd) runCerts() {
@@ -120,8 +114,8 @@ func (server *Serverd) runHTTPSWorkServer() {
 	addr := fmt.Sprintf(":%d", server.Port)
 	log.Println("runHTTPSWorkServer")
 	s := &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		Handler:      server,
 	}

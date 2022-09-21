@@ -2,11 +2,14 @@ package main
 
 import (
 	"flag"
+	"log"
 	"workserver/config"
 	"workserver/serverd"
 )
 
 func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
 	parseFlag()
 
 	config.Load(configDir)

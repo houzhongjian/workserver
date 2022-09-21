@@ -1,3 +1,9 @@
 type: reverse_proxy
 proxy_pass: http://ws.mengyuzhe.com
 server_name: ws.houzhongjian.com
+module:
+  - path: /api/
+    proxy_pass: http://ws.mengyuzhe.com
+
+  - path: /admin/
+    proxy_pass: http://ws.mengyuzhe.com

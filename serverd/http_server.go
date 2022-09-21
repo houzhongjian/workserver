@@ -63,7 +63,7 @@ func NewServerd(opt ServerdOptions) *Serverd {
 
 
 func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.Host, r.Method, r.RequestURI)
+	//log.Println(r.Host, r.Method, r.RequestURI)
 
 	serverParams, ok := server.MP[r.Host]
 	if !ok {

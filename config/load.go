@@ -83,6 +83,7 @@ func readConfItem(path string) error {
 			Type:       cf.Type,
 			ServerName: cf.ServerName,
 			ProxyPass:  cf.ProxyPass,
+			Module:     cf.Module,
 		})
 	}
 	return nil

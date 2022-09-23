@@ -2,15 +2,20 @@ package serverd
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"path"
 	"workserver/config"
 )
 
 func ServeFile(fileServer config.FileServerConfig, w http.ResponseWriter,r *http.Request) {
+	//判断是否强制跳转到https.
+	if fileServer.ForceJumpHttps && r.TLS == nil {
+		host := fmt.Sprintf("https://%s%s",r.Host,r.RequestURI)
+		http.Redirect(w,r,host, http.StatusMovedPermanently)
+		return
+	}
+
 	file := path.Clean(fmt.Sprintf("%s/%s", fileServer.Root, r.RequestURI))
-	log.Printf("file:%+v\n", file)
 	http.ServeFile(w,r,file)
 }
 

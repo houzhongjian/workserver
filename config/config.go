@@ -13,18 +13,20 @@ type Config struct {
 
 //FileServerConfig 静态文件配置.
 type FileServerConfig struct {
-	Type       ConfigType `yaml:"type"`
-	ServerName string     `yaml:"server_name"`
-	Index      string     `yaml:"index"`
-	Root       string     `yaml:"root"`
+	Type           ConfigType `yaml:"type"`
+	ServerName     string     `yaml:"server_name"`
+	Index          string     `yaml:"index"`
+	Root           string     `yaml:"root"`
+	ForceJumpHttps bool       `yaml:"force_jump_https"`
 }
 
 //ReverseProxyConfig 反向代理配置.
 type ReverseProxyConfig struct {
-	Type       ConfigType               `yaml:"type"`
-	ServerName string                   `yaml:"server_name"`
-	ProxyPass  string                   `yaml:"proxy_pass"`
-	Module     []ReverseProxyPathModule `yaml:"module"`
+	Type           ConfigType               `yaml:"type"`
+	ServerName     string                   `yaml:"server_name"`
+	ProxyPass      string                   `yaml:"proxy_pass"`
+	Module         []ReverseProxyPathModule `yaml:"module"`
+	ForceJumpHttps bool                     `yaml:"force_jump_https"`
 }
 
 //ReverseProxyPathModule 根据不同的url路径 进行不同的反向代理.

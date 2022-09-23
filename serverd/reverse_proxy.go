@@ -1,6 +1,7 @@
 package serverd
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -11,12 +12,22 @@ import (
 
 //StartReverseProxy 开始转发代理.
 func StartReverseProxy(reverseProxy config.ReverseProxyConfig, w http.ResponseWriter,r *http.Request) {
+	log.Println("StartReverseProxy")
+	//判断是否强制跳转到https.
+	if reverseProxy.ForceJumpHttps && r.TLS == nil {
+		host := fmt.Sprintf("https://%s%s",r.Host,r.RequestURI)
+		http.Redirect(w,r,host, http.StatusMovedPermanently)
+		return
+	}
+
 	//判断是否配置了路由转发模块.
-	if len(reverseProxy.Module) > 1 {
+	log.Printf("StartReverseProxy Module:%+v\n",reverseProxy.Module)
+	log.Println("requestURI 1:", r.RequestURI)
+	if len(reverseProxy.Module) > 0 {
 		for _, mod := range reverseProxy.Module {
-			res := strings.HasPrefix(r.RequestURI, mod.Path)
 			requestURI := strings.TrimPrefix(r.RequestURI, mod.Path)
-			log.Println(r.RequestURI, mod.Path, res, mod.ProxyPass, requestURI)
+			res := strings.HasPrefix(r.RequestURI, mod.Path)
+			log.Println("requestURI 2:",requestURI)
 			if res{
 				u, _ := url.Parse(requestURI)
 				startReverseProxy(mod.ProxyPass, w, r, u)
@@ -41,11 +52,6 @@ func startReverseProxy(proxyPass string ,w http.ResponseWriter, r *http.Request,
 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 	r.Host = target.Host
 	r.URL = u
-
-	log.Println("r.URL.Host",r.URL.Host)
-	log.Println("r.URL",r.URL.String())
-	log.Println("r.URL.Scheme",r.URL.Scheme)
-	log.Println("r.Host",r.Host)
 
 	proxy.ServeHTTP(w,r)
 }

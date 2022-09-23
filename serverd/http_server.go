@@ -1,13 +1,10 @@
 package serverd
 
 import (
-	"crypto/tls"
-	"fmt"
 	"golang.org/x/crypto/acme/autocert"
-	"golang.org/x/net/http2"
 	"log"
 	"net/http"
-	"time"
+	"sync"
 	"workserver/config"
 )
 
@@ -21,15 +18,21 @@ type ServerdOptions struct {
 	ReverseProxy []config.ReverseProxyConfig
 }
 type Serverd struct {
-	Port         int
-	AccessLog    string
-	ErrorLog     string
-	Email        string
-	CertsDir     string
-	FileServer   []config.FileServerConfig
-	ReverseProxy []config.ReverseProxyConfig
-	MP           map[string]ServerParams
-	CertManager  autocert.Manager
+	Port             int
+	AccessLog        string
+	ErrorLog         string
+	Email            string
+	CertsDir         string
+	FileServer       []config.FileServerConfig
+	ReverseProxy     []config.ReverseProxyConfig
+	MP               map[string]ServerParams
+	CertManager      autocert.Manager
+	keyAuthorization KeyAuthorization
+}
+
+type KeyAuthorization struct {
+	Data map[string]string
+	sync.RWMutex
 }
 
 type ServerParams struct {
@@ -58,12 +61,15 @@ func NewServerd(opt ServerdOptions) *Serverd {
 		MP:           make(map[string]ServerParams),
 		Email:        opt.Email,
 		CertsDir:     opt.CertsDir,
+		keyAuthorization: KeyAuthorization{
+			Data:    make(map[string]string),
+			RWMutex: sync.RWMutex{},
+		},
 	}
 }
 
-
 func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//log.Println(r.Host, r.Method, r.RequestURI)
+	log.Println("---> request: ", r.Host, r.Method, r.RequestURI)
 
 	serverParams, ok := server.MP[r.Host]
 	if !ok {
@@ -75,9 +81,10 @@ func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (server *Serverd) Run() {
 	server.initMap()
-	server.runCerts()
+	go server.CheckCert()
 
 	go server.runHTTPSWorkServer()
+
 	server.runHTTPWorkServer()
 }
 
@@ -94,44 +101,6 @@ func (server *Serverd) GetAllServerName() []string {
 	}
 
 	return serverName
-}
-func (server *Serverd) runCerts() {
-	server.CertManager = autocert.Manager{
-		Prompt:      autocert.AcceptTOS,
-		HostPolicy:  autocert.HostWhitelist(server.GetAllServerName()...), //your domain here
-		Cache:       autocert.DirCache(server.CertsDir),                   //folder for storing certificates
-		Email:       server.Email,
-	}
-}
-
-func (server *Serverd) runHTTPSWorkServer() {
-	t := &tls.Config{
-		GetCertificate: server.CertManager.GetCertificate,
-		NextProtos:     []string{http2.NextProtoTLS, "http/1.1"},
-		MinVersion:     tls.VersionTLS12,
-	}
-
-	addr := fmt.Sprintf(":%d", server.Port)
-	log.Println("runHTTPSWorkServer")
-	s := &http.Server{
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      server,
-	}
-	s.Addr = addr
-	s.TLSConfig = t
-	panic(s.ListenAndServeTLS("",""))
-}
-
-func (server *Serverd) runHTTPWorkServer() {
-	log.Println("runHTTPWorkServer")
-	staticHandler := http.StripPrefix("/.well-known/acme-challenge/", http.FileServer(http.Dir(server.CertsDir)))
-	http.Handle("/.well-known/acme-challenge/", staticHandler)
-	err := http.ListenAndServe(":80", server.CertManager.HTTPHandler(server))
-	if err != nil {
-		panic(err)
-	}
 }
 
 func (server *Serverd) initMap() {

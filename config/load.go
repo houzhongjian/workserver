@@ -73,17 +73,19 @@ func readConfItem(path string) error {
 	switch cf.Type {
 	case ConfigType_FileServer:
 		ConfigMgr.FileServer = append(ConfigMgr.FileServer, FileServerConfig{
-			Type:       cf.Type,
-			ServerName: cf.ServerName,
-			Index:      cf.Index,
-			Root:       cf.Root,
+			Type:           cf.Type,
+			ServerName:     cf.ServerName,
+			Index:          cf.Index,
+			Root:           cf.Root,
+			ForceJumpHttps: cf.ForceJumpHttps,
 		})
 	case ConfigType_ReverseProxy:
 		ConfigMgr.ReverseProxy = append(ConfigMgr.ReverseProxy, ReverseProxyConfig{
-			Type:       cf.Type,
-			ServerName: cf.ServerName,
-			ProxyPass:  cf.ProxyPass,
-			Module:     cf.Module,
+			Type:           cf.Type,
+			ServerName:     cf.ServerName,
+			ProxyPass:      cf.ProxyPass,
+			Module:         cf.Module,
+			ForceJumpHttps: cf.ForceJumpHttps,
 		})
 	}
 	return nil

@@ -212,14 +212,30 @@ func pem2key(data []byte) *ecdsa.PrivateKey {
 	return key
 }
 
-//GetCertExpireTime 获取证书的过期时间.
-func GetCertExpireTime(keyPath string) (t time.Time, err error) {
+//GetCertExpireTimeToFile 获取证书的过期时间.
+func GetCertExpireTimeToFile(keyPath string) (t time.Time, err error) {
 	certPEMBlock, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		log.Println(err)
 		return t, err
 	}
 
+	certDERBlock, _ := pem.Decode(certPEMBlock)
+	if certDERBlock == nil {
+		log.Println(err)
+		return t,err
+	}
+	x509Cert, err := x509.ParseCertificate(certDERBlock.Bytes)
+	if err != nil {
+		log.Println(err)
+		return t,err
+	}
+
+	return x509Cert.NotAfter.In(time.Local), nil
+}
+
+//GetCertExpireTimeToByte 获取证书的过期时间.
+func GetCertExpireTimeToByte(certPEMBlock []byte) (t time.Time, err error) {
 	certDERBlock, _ := pem.Decode(certPEMBlock)
 	if certDERBlock == nil {
 		log.Println(err)

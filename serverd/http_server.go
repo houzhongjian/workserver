@@ -1,10 +1,15 @@
 package serverd
 
 import (
+	"fmt"
 	"golang.org/x/crypto/acme/autocert"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"sync"
+	"time"
 	"workserver/config"
 )
 
@@ -28,6 +33,19 @@ type Serverd struct {
 	MP               map[string]ServerParams
 	CertManager      autocert.Manager
 	keyAuthorization KeyAuthorization
+	certMap          CertMap
+}
+
+type CertMap struct {
+	sync.RWMutex
+	Data map[string]CertMapData
+}
+
+type CertMapData struct {
+	PemData []byte
+	KeyData []byte
+	KeyFile string
+	PemFile string
 }
 
 type KeyAuthorization struct {
@@ -65,6 +83,10 @@ func NewServerd(opt ServerdOptions) *Serverd {
 			Data:    make(map[string]string),
 			RWMutex: sync.RWMutex{},
 		},
+		certMap: CertMap{
+			RWMutex: sync.RWMutex{},
+			Data:    make(map[string]CertMapData),
+		},
 	}
 }
 
@@ -81,6 +103,7 @@ func (server *Serverd) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (server *Serverd) Run() {
 	server.initMap()
+	server.initCertToMap()
 	go server.CheckCert()
 
 	go server.runHTTPSWorkServer()
@@ -116,5 +139,69 @@ func (server *Serverd) initMap() {
 			Type:       reverseProxy.Type,
 			ServerName: reverseProxy.ServerName,
 		}
+	}
+}
+
+//initCertToMap 初始化证书到map.
+func (server *Serverd) initCertToMap() {
+	//获取所有的证书.
+	server.certMap.Lock()
+	defer server.certMap.RUnlock()
+
+	for _, sn := range server.GetAllServerName() {
+		host, ok := server.certMap.Data[sn]
+		if !ok {
+			server.certMap.Data[sn] = CertMapData{
+				PemData: nil,
+				KeyData: nil,
+				KeyFile: "",
+				PemFile: "",
+			}
+		}
+
+		//检测当前sn是否存在证书.
+		keyFile := path.Clean(fmt.Sprintf("%s/%s.key", server.CertsDir, sn))
+		pemFile := path.Clean(fmt.Sprintf("%s/%s.pem", server.CertsDir, sn))
+
+		if _, err := os.Stat(keyFile); os.IsNotExist(err) {
+			//不存在证书:签发证书.
+			if err := server.IssueCertificate(sn); err != nil {
+				log.Printf("err:%+v\n", err)
+				return
+			}
+		}
+
+		//检测当前证书是否过期.
+		expireTime, err := GetCertExpireTimeToFile(keyFile)
+		if err != nil {
+			log.Printf("err:%+v\n", err)
+			return
+		}
+		if (expireTime.Sub(time.Now()).Hours() / 24) < 30 {
+			//证书即将过期:签发证书.
+			if err := server.IssueCertificate(sn); err != nil {
+				log.Printf("err:%+v\n", err)
+				return
+			}
+		}
+
+		keyBuf, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			log.Printf("err:%+v\n", err)
+			return
+		}
+
+
+		pemBuf, err := ioutil.ReadFile(pemFile)
+		if err != nil {
+			log.Printf("err:%+v\n", err)
+			return
+		}
+
+		//将证书加载到map中.
+		host.KeyFile = keyFile
+		host.KeyData = keyBuf
+		host.PemFile = pemFile
+		host.PemData = pemBuf
 	}
 }
